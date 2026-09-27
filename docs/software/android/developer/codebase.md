@@ -1,7 +1,8 @@
 ---
 title: Codebase
 sidebar_position: 2
-last_updated: 2026-06-11
+last_updated: 2026-09-11
+description: Repository layout, package namespacing, and the Gradle build system — convention plugins, build variants, and key tasks.
 parent: Developer Guide
 ---
 
@@ -11,11 +12,11 @@ Repository layout, namespacing conventions, and build system overview.
 
 ## Repository Structure
 
-```
+```text
 Meshtastic-Android/
 ├── androidApp/                 # Android application module
 │   ├── src/main/           # Shared Android code
-│   ├── src/google/         # Google Play flavor (Gemini, proprietary)
+│   ├── src/google/         # Google Play flavor (proprietary Google integrations — Gemini, Maps, Play services)
 │   └── src/fdroid/         # F-Droid flavor (FOSS-only)
 ├── desktopApp/                # Desktop JVM application
 ├── feature/                # Feature modules (KMP)
@@ -23,14 +24,14 @@ Meshtastic-Android/
 │   ├── messaging/
 │   ├── connections/
 │   ├── map/
+│   ├── map-maplibre/
 │   ├── node/
 │   ├── settings/
 │   ├── firmware/
 │   ├── docs/
 │   ├── wifi-provision/
 │   ├── widget/
-│   ├── discovery/
-│   └── car/
+│   └── discovery/
 ├── core/                   # Core infrastructure modules (KMP)
 │   ├── barcode/
 │   ├── ble/
@@ -40,6 +41,7 @@ Meshtastic-Android/
 │   ├── datastore/
 │   ├── di/
 │   ├── domain/
+│   ├── konsist/
 │   ├── model/
 │   ├── navigation/
 │   ├── network/
@@ -55,11 +57,11 @@ Meshtastic-Android/
 ├── screenshot-tests/       # Compose Preview screenshot tests (visual-regression gate)
 ├── docs-screenshots/       # Doc-framed composition screenshots (generate-only, not CI-gated)
 ├── build-logic/            # Convention plugins and build helpers
-│   ├── convention/
-│   └── flatpak/
+│   └── convention/
 ├── docs/                   # Documentation source (markdown)
-│   ├── user/
-│   └── developer/
+│   └── en/                 # English source; other locales live under docs/<locale>/user/
+│       ├── user/
+│       └── developer/
 ├── gradle/                 # Gradle wrapper and version catalog
 │   └── libs.versions.toml
 ├── specs/                  # Feature specifications
@@ -69,7 +71,7 @@ Meshtastic-Android/
 ## Namespacing Convention
 
 All Kotlin packages follow the pattern:
-```
+```text
 org.meshtastic.{layer}.{module}.{subpackage}
 ```
 
@@ -90,13 +92,23 @@ All build files use Kotlin DSL (`.gradle.kts`). Configuration:
 
 ### Convention Plugins
 
-Located in `build-logic/convention/src/main/kotlin/org/meshtastic/buildlogic/`:
+Located in `build-logic/convention/src/main/kotlin/`. The full set is registered in
+`build-logic/convention/build.gradle.kts`; these are the ones a module build applies most often:
 
 | Plugin | Purpose |
 |--------|---------|
 | `meshtastic.kmp.feature` | Standard feature module setup |
+| `meshtastic.kmp.library` | Shared KMP library module |
+| `meshtastic.kmp.library.compose` | KMP library that also ships Compose UI |
 | `meshtastic.kmp.jvm.android` | JVM + Android target configuration |
+| `meshtastic.koin` | Koin Annotations + K2 compiler plugin |
 | `meshtastic.kotlinx.serialization` | Serialization plugin setup |
+| `meshtastic.android.room` | Room KMP setup and schema location |
+| `meshtastic.android.screenshot` | Compose Preview screenshot testing |
+
+The rest cover the application and library variants, lint, detekt, spotless, Dokka, Kover,
+AboutLibraries, analytics, secrets, the docs tasks and the root aggregate — read the `register(…)`
+block rather than assuming a plugin does or does not exist.
 
 ### Build Variants (Android)
 
@@ -107,7 +119,7 @@ Located in `build-logic/convention/src/main/kotlin/org/meshtastic/buildlogic/`:
 
 ### Key Gradle Tasks
 
-```bash
+```shell
 # Compile check across all KMP targets
 ./gradlew kmpSmokeCompile
 
@@ -122,6 +134,12 @@ Located in `build-logic/convention/src/main/kotlin/org/meshtastic/buildlogic/`:
 
 # Desktop run
 ./gradlew :desktopApp:run
+
+# Desktop native installers for the current OS (DMG / MSI+EXE / DEB+RPM+AppImage)
+./gradlew :desktopApp:packageReleaseDistributionForCurrentOS
+
+# API reference (Dokka HTML → build/dokka/html)
+./gradlew dokkaGeneratePublicationHtml
 ```
 
 ## Version Catalog Highlights
@@ -138,6 +156,3 @@ Key dependencies in `gradle/libs.versions.toml`:
 | Networking | Ktor |
 | Markdown | multiplatform-markdown-renderer |
 | Testing | kotlin-test, compose-ui-test |
-
----
-
